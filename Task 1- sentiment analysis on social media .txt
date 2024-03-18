@@ -1,0 +1,138 @@
+Code:
+
+# Step 1: Data Collection
+# For simplicity, let's assume we have a CSV file with two columns: 'text' for tweets and 'sentiment' for labels.
+
+import pandas as pd
+
+# Load the dataset
+df = pd.read_csv('tweets.csv')
+
+# Step 2: Text Preprocessing
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+
+nltk.download('stopwords')
+nltk.download('punkt')
+
+def preprocess_text(text):
+    # Remove special characters and links
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text)
+    text = re.sub(r'\W', ' ', text)
+    # Convert to lowercase
+    text = text.lower()
+    # Tokenize
+    tokens = word_tokenize(text)
+    # Remove stopwords
+    stop_words = set(stopwords.words('english'))
+    filtered_tokens = [word for word in tokens if word not in stop_words]
+    # Join tokens back into text
+    return ' '.join(filtered_tokens)
+
+df['clean_text'] = df['text'].apply(preprocess_text)
+
+# Step 3: Feature Extraction
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tfidf_vectorizer = TfidfVectorizer(max_features=5000)
+X = tfidf_vectorizer.fit_transform(df['clean_text']).toarray()
+y = df['sentiment']
+
+# Step 4: Model Selection
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import classification_report
+
+# Step 5: Model Training
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Choose Naive Bayes classifier
+classifier = MultinomialNB()
+classifier.fit(X_train, y_train)
+
+# Step 6: Model Evaluation
+y_pred = classifier.predict(X_test)
+print(classification_report(y_test, y_pred))
+
+# Step 7: Deployment (Optional)
+# For deployment, you can create a simple web interface using Flask or Django.
+
+from flask import Flask, render_template, request
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+import pickle
+
+app = Flask(_name_)
+
+# Load the trained model and TF-IDF vectorizer
+with open('classifier.pkl', 'rb') as f:
+    classifier = pickle.load(f)
+
+with open('tfidf_vectorizer.pkl', 'rb') as f:
+    tfidf_vectorizer = pickle.load(f)
+
+def preprocess_text(text):
+    text = re.sub(r'http\S+|www\S+|https\S+', '', text)
+    text = re.sub(r'\W', ' ', text)
+    text = text.lower()
+    tokens = word_tokenize(text)
+    stop_words = set(stopwords.words('english'))
+    filtered_tokens = [word for word in tokens if word not in stop_words]
+    return ' '.join(filtered_tokens)
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    if request.method == 'POST':
+        text = request.form['text']
+        clean_text = preprocess_text(text)
+        tfidf_text = tfidf_vectorizer.transform([clean_text])
+        prediction = classifier.predict(tfidf_text)
+        sentiment = "Positive" if prediction == 1 else "Negative"
+        return render_template('result.html', text=text, sentiment=sentiment)
+
+if _name_ == '_main_':
+    app.run(debug=True)
+You'll also need to create two HTML templates:
+
+index.html:
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis</title>
+</head>
+<body>
+    <h1>Sentiment Analysis</h1>
+    <form action="/predict" method="post">
+        <textarea name="text" rows="4" cols="50"></textarea><br>
+        <input type="submit" value="Analyze">
+    </form>
+</body>
+</html>
+result.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result</title>
+</head>
+<body>
+    <h1>Analysis Result</h1>
+    <p>Text: {{ text }}</p>
+    <p>Sentiment: {{ sentiment }}</p>
+</body>
+</html>
